@@ -1,0 +1,10 @@
+[project]
+name = "track2-day24-2a202601053-trancongchien"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8.0,<10",
+    "requests>=2.31,<3",
+]

@@ -36,5 +36,44 @@ class PolicyContext:
     egress_enabled: bool
 
 
+_MAX_DELEGATION_DEPTH = 2
+_KNOWN_CLASSIFICATIONS = frozenset({"public", "internal", "restricted"})
+
+
 def check(context: PolicyContext) -> tuple[bool, str]:
-    raise NotImplementedError("BƯỚC 3b: implement policy check")
+    """PEP: chặn TRƯỚC KHI tool execute. reason không bao giờ rỗng."""
+    if context.data_classification not in _KNOWN_CLASSIFICATIONS:
+        return (
+            False,
+            f"deny: data_classification không hợp lệ "
+            f"({context.data_classification!r}) cho agent {context.agent_owner}",
+        )
+
+    if context.data_classification == "restricted":
+        if context.egress_enabled:
+            return (
+                False,
+                f"deny: dữ liệu restricted không được phép đi kèm egress "
+                f"(agent={context.agent_owner}, purpose={context.request_purpose}) "
+                f"— nguy cơ exfil qua prompt injection",
+            )
+        return (
+            True,
+            f"allow: restricted nhưng chỉ đọc nội bộ, egress tắt "
+            f"(agent={context.agent_owner}, purpose={context.request_purpose})",
+        )
+
+    if context.delegation_depth > _MAX_DELEGATION_DEPTH:
+        return (
+            False,
+            f"deny: delegation_depth={context.delegation_depth} vượt ngưỡng "
+            f"{_MAX_DELEGATION_DEPTH} (agent={context.agent_owner})",
+        )
+
+    return (
+        True,
+        f"allow: dữ liệu {context.data_classification} với purpose="
+        f"{context.request_purpose}, agent={context.agent_owner}, "
+        f"delegation_depth={context.delegation_depth}, "
+        f"egress={'bật' if context.egress_enabled else 'tắt'}",
+    )
